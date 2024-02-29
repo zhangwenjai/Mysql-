@@ -1,6 +1,6 @@
 # MySQLConnectionPool-连接池
 #关键技术点
-MySQL数据库编程、单例模式、C++11多线程编程、基于CAS的原子整形、智能指针shared_ptr、lambda表达式、生产者-消费者模型。
+MySQL数据库编程、单例模式、C++11多线程编程、基于CAS的原子整形、智能指针shared_ptr、函数绑定器技术、lambda表达式、生产者-消费者模型。
 # 项目背景
 为了提高MySQL数据库的访问瓶颈，除了在服务器端增加缓存服务器缓存常用的数据之外（例如redis），还可以增加连接池，来提高MySQL Server的访问效率，**在高并发情况下，大量的TCP三次握手、MySQL Server连接认证、MySQL Server关闭连接回收资源和TCP四次挥手所耗费的性能时间也是很明显的**，增加连接池就是为了减少这一部分的性能损耗。 
 
@@ -51,24 +51,65 @@ IDE：vs2019；  MySQL数据库：5.7.17.0
 
 验证数据的插入操作所花费的时间，第一次测试使用普通的数据库访问操作，第二次测试使用带连接池的数据库访问操作，对比两次操作同样数据量所花费的时间，性能压力测试结果如下：
 
-|数据量 |未使用连接池花费时间| 使用连接池花费时间|
-|------|-------------------|----------------|
++-----------+--------------------------+--------------------------+--+--+
+| 数据量\条 | 未使用连接池花费时间\ms  | 使用连接池花费时间\ms    |  |  |
++-----------+--------------------------+--------------------------+--+--+
+| 1000      | 单线程:3782 四线程:994   | 单线程:2158 四线程:805   |  |  |
++-----------+--------------------------+--------------------------+--+--+
+| 5000      | 单线程:20516 四线程:4230 | 单线程:10615 四线程:3915 |  |  |
++-----------+--------------------------+--------------------------+--+--+
+| 10000     | 单线程:39564 四线程:7815 | 单线程:15926 四线程:7061  |  |  |
++-----------+--------------------------+--------------------------+--+--+
 
-| Syntax      | Description |
-| ----------- | ----------- |
-| Header      | Title       |
-| Paragraph   | Text        |
+# 可能会遇到的问题（mysql\_error(MYSQL\*)
+**第一：mysql sever has gone awawy**
 
-| Syntax      | Description | Test Text     |
-| :---        |    :----:   |          ---: |
-| Header      | Title       | Here's this   |
-| Paragraph   | Text        | And more      |
+此报错主要原因可能有两点：
 
+1.发送的sql语句太长，超过max\_allowed\_packet的大小；
 
+解决方法有两种(数值按需自行修改)，修改配置文件my.cnf（my.ini），在配置文件中添加
+>max\_allowed\_packet = 100m
 
-教程标题| 主要内容
--------|----------
-关于Markdown | 简介Markdown，Markdown的优缺点
-Markdown基础 | Markdown的**基本语法**，格式化文本、代码、列表、链接和图片、分割线、转义符等
-Markdown表格和公式 | Markdown的**扩展语法**，表格、公式
+或者在终端修改对应数值
+>set global max\_allowed\_packet=1024\*1024\*16;
 
+2.由于挂起时间过长被server强行关闭或被人为kill，解决方法仍然有两种
+
+在配置文件中添加
+>wait_timeout=2880000
+
+>interactive_timeout = 2880000
+
+或者在终端修改对应数值
+>set global wait_timeout=28800;
+
+>set global interactive_timeout=28800;
+
+>set global net_read_timeout=28800;
+
+>set global net_write_timeout=28800;
+
+完成以上操作之后重启mysql服务即可。
+参考资料：
+
+>https://blog.csdn.net/weixin_42365141/article/details/114329751?ops_request_misc=%257B%2522request%255Fid%2522%253A%2522170917012516800226580330%2522%252C%2522scm%2522%253A%252220140713.130102334.pc%255Fall.%2522%257D&request_id=170917012516800226580330&biz_id=0&utm_medium=distribute.pc_search_result.none-task-blog-2~all~first_rank_ecpm_v1~rank_v31_ecpm-1-114329751-null-null.142^v99^pc_search_result_base9&utm_term=mysql%20sever%20has%20gone%20awawy%20windows&spm=1018.2226.3001.4187
+
+>https://blog.csdn.net/weixin_33132819/article/details/113226302?ops_request_misc=%257B%2522request%255Fid%2522%253A%2522170917012516800226580330%2522%252C%2522scm%2522%253A%252220140713.130102334.pc%255Fall.%2522%257D&request_id=170917012516800226580330&biz_id=0&utm_medium=distribute.pc_search_result.none-task-blog-2~all~first_rank_ecpm_v1~rank_v31_ecpm-6-113226302-null-null.142^v99^pc_search_result_base9&utm_term=mysql%20sever%20has%20gone%20awawy%20windows&spm=1018.2226.3001.4187
+
+**第二：连接数据库失败**
+
+此问题与问题三基本同源，刚开始解决时发现在浏览器查到的ip与在ipconfig\all中查询到的不一致，浏览器查询到的为公网ip，本地计算机查询到的是局域网ip，但使用两者都无法连接mysql数据库，最后使用本地127.0.0.1地址连接成功。
+
+**第三：Can't connect to MySQL server on 'localhost' (10048)**
+
+这是使用mysql给予的api函数连接数据库时遇到的问题，与上述问题不同的是已经设置ip地址为127.0.0.1还是报错误码10048，大概原因可能是两点，第一，mysql短时间内瞬间增加太多连接数,而tcp连接在短时间内又不释放, 这样就导致不能有新的连接产生,所以提示连接不到mysql数据库. 第二，5000以下端口用完了,而5000以上端口禁止连接。针对以上两种问题来源，对应两种解决方式：
+
+第一、修改tcp连接释放时间,在注册表里修改: tcp连接释放时间默认240,我们可以修改的小一些,一般在30-60之间就可以了. 找到 HKEY\_LOCAL\_MACHINE\SYSTEM\CurrentControlSet\ Services\TCPIP\Parameters 注册表子键 并创建名为 TcpTimedWaitDelay 的新 REG\_DWORD 值 设置此值为十进制 30, 十六进制为 0×0000001e
+
+第二、 修改允许连接最大端口号MaxUserPort设置(增加最大值端口连接): 找到 HKEY\_LOCAL\_MACHINE\SYSTEM\CurrentControlSet\ Services\TCPIP\Parameters 注册表子键 并创建名为 MaxUserPort 的新 REG\_DWORD 值 设置此值为十进制最低 32768
+
+第一、第二、执行完毕后重新启动服务器。
+参考资料：
+
+>https://blog.csdn.net/weixin_33207144/article/details/113188112?ops_request_misc=&request_id=&biz_id=102&utm_term=mysql_real_connect%E5%A4%B1%E8%B4%A510048&utm_medium=distribute.pc_search_result.none-task-blog-2~all~sobaiduweb~default-1-113188112.142^v99^pc_search_result_base9&spm=1018.2226.3001.4187
