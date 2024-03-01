@@ -1,0 +1,6 @@
+﻿  main.cpp
+G:\connect pool\common c_pool\main.cpp(18,4): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+G:\connect pool\common c_pool\main.cpp(28,4): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+G:\connect pool\common c_pool\main.cpp(38,4): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+G:\connect pool\common c_pool\main.cpp(48,4): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  common c_pool.vcxproj -> G:\connect pool\common c_pool\x64\Debug\common c_pool.exe
